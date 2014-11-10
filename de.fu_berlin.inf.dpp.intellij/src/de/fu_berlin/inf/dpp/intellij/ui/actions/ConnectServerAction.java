@@ -24,8 +24,9 @@ package de.fu_berlin.inf.dpp.intellij.ui.actions;
 
 import de.fu_berlin.inf.dpp.account.XMPPAccount;
 import de.fu_berlin.inf.dpp.account.XMPPAccountStore;
+import de.fu_berlin.inf.dpp.core.account.ConnectionConfigurationFactory;
+import de.fu_berlin.inf.dpp.core.account.XmppAccountLocator;
 import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
-import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.XMPPError;
 import org.picocontainer.annotations.Inject;
@@ -53,7 +54,7 @@ public class ConnectServerAction extends AbstractSarosAction {
      * Connects with the given user.
      */
     public void executeWithUser(String user) {
-        XMPPAccount account = locateAccount(user);
+        XMPPAccount account = XmppAccountLocator.locateAccount(user, accountStore.getAllAccounts());
         connectAccount(account);
         actionPerformed();
     }
@@ -69,38 +70,6 @@ public class ConnectServerAction extends AbstractSarosAction {
     }
 
     /**
-     * Searches for user in account store
-     */
-    protected XMPPAccount locateAccount(String user) {
-        int index = user.indexOf('@');
-        String server = null;
-        if (index > -1) {
-            String[] pair = user.split("@");
-            user = pair[0];
-            server = pair[1];
-        }
-
-        for (XMPPAccount account : accountStore.getAllAccounts()) {
-            if (server == null) {
-                if (user.equalsIgnoreCase(account.getUsername())) {
-                    return account;
-                }
-            } else {
-                if (server.equalsIgnoreCase(account.getServer()) && user
-                    .equalsIgnoreCase(account.getUsername())) {
-                    return account;
-                }
-            }
-
-            if (user.startsWith(account.getUsername())) {
-                return account;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Connects an Account tothe XMPPService and sets it as active.
      *
      * @param account
@@ -112,9 +81,9 @@ public class ConnectServerAction extends AbstractSarosAction {
         try {
             //FIXME: This should use the ConnectionHandler instead
             connectionService.connect(
-                createConnectionConfiguration(account.getDomain(),
-                    account.getServer(), account.getPort(), account.useTLS(),
-                    account.useSASL()), account.getUsername(),
+                ConnectionConfigurationFactory.createConnectionConfiguration(account.getDomain(),
+                        account.getServer(), account.getPort(), account.useTLS(),
+                        account.useSASL()), account.getUsername(),
                 account.getPassword()
             );
             accountStore.setAccountActive(account);
@@ -130,29 +99,6 @@ public class ConnectServerAction extends AbstractSarosAction {
             }
             LOG.error("Could not connect " + account, e);
         }
-    }
-
-    private ConnectionConfiguration createConnectionConfiguration(String domain,
-        String server, int port, boolean useTLS, boolean useSASL) {
-        //FIXME: Copy from de.fu_berlin.inf.dpp.communication.connection.ConnectionHandler
-        //minus ProxyInfo
-        ConnectionConfiguration connectionConfiguration = null;
-
-        if (server.length() == 0)
-            connectionConfiguration = new ConnectionConfiguration(domain);
-        else
-            connectionConfiguration = new ConnectionConfiguration(server, port,
-                domain);
-
-        connectionConfiguration.setSASLAuthenticationEnabled(useSASL);
-
-        if (!useTLS)
-            connectionConfiguration
-                .setSecurityMode(ConnectionConfiguration.SecurityMode.disabled);
-
-        connectionConfiguration.setReconnectionAllowed(false);
-
-        return connectionConfiguration;
     }
 
     private String generateHumanReadableErrorMessage(XMPPException e) {
