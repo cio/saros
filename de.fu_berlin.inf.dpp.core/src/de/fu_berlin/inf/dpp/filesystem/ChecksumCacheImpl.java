@@ -92,8 +92,7 @@ public final class ChecksumCacheImpl implements IChecksumCache {
 
     public ChecksumCacheImpl(
         IFileContentChangedNotifier fileContentChangedNotifier) {
-        fileContentChangedNotifier
-            .addFileContentChangedListener(fileContentChangedListener);
+//        fileContentChangedNotifier.addFileContentChangedListener(fileContentChangedListener);
     }
 
     @Override
